@@ -308,40 +308,21 @@
 
     async function handleUserMessage(text) {
       chatHistory.push({ role: 'user', text });
-
-      // Se o nome ainda não foi definido, esta é a primeira interação.
-      if (!userName) {
-        setTypingStatus(true);
-        try {
-          // Chama a IA com uma instrução especial para extrair o nome.
-          const responseText = await callChatAPI(chatHistory, null);
-          
-          // Extrai o nome da resposta formatada da IA.
-          const nameMatch = responseText.match(/Bem-vindo\(a\),\s*([^\s!,.?]+)/i);
-          if (nameMatch && nameMatch[1]) {
-            userName = nameMatch[1];
-          } else {
-            // Fallback caso a IA não retorne o formato esperado.
-            userName = "Amigo(a)";
-          }
-          
-          addMessage('assistant', responseText);
-          chatHistory.push({ role: 'assistant', text: responseText });
-
-        } catch (err) {
-          console.error("API Error during name extraction:", err);
-          addMessage('assistant', 'Desculpe, tive um problema para iniciar nossa conversa. Pode me dizer seu nome novamente?');
-          chatHistory.pop(); // Remove a última mensagem para o usuário tentar de novo.
-        } finally {
-          setTypingStatus(false);
-        }
-        return;
-      }
       
-      // Lógica para as mensagens seguintes da conversa.
       setTypingStatus(true);
       try {
-        const responseText = await callChatAPI(chatHistory, userName);
+        const responseText = await callChatAPI(chatHistory, userName); // Passa userName (pode ser null)
+
+        // Se o nome ainda não foi definido, tentamos extraí-lo da primeira resposta da IA
+        if (!userName) {
+            const nameMatch = responseText.match(/Bem-vindo\(a\),\s*([^\s!,.?]+)/i);
+            if (nameMatch && nameMatch[1]) {
+                userName = nameMatch[1];
+            } else {
+                userName = "Amigo(a)"; // Fallback
+            }
+        }
+
         const parts = responseText.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean).slice(0, 3);
 
         for (const p of parts) {
@@ -357,6 +338,7 @@
       } catch (err) {
         console.error("API Error:", err);
         addMessage('assistant', 'Tive um pico de demanda agora e não consegui processar. Podemos tentar de novo ou posso te guiar por um exercício curto do Cap. 1?');
+        chatHistory.pop(); // Remove a mensagem do usuário que deu erro para ele tentar novamente
       } finally {
         setTypingStatus(false);
       }
@@ -370,8 +352,6 @@
     }
 
     async function sendServerPurchaseEvent() {
-        // ATENÇÃO: Esta implementação é APENAS PARA DEMONSTRAÇÃO.
-        // Em produção, esta chamada DEVE ser feita a partir de um servidor seguro (proxy).
         const eventId = crypto.randomUUID();
         const eventData = {
             event_name: 'Purchase',
@@ -399,7 +379,8 @@
         }
     }
 
-    // --- LÓGICA DA IA ---
+    // --- LÓGICA DA IA (MOVENDO PARA O FRONT-END PARA CORREÇÃO) ---
+
     function buildSystemInstruction(userName) {
         // Se o nome não existe, usa a instrução para extrair o nome.
         if (!userName) {
@@ -429,7 +410,8 @@ Mapeamento de Dores -> Capítulos:
     }
 
     async function callChatAPI(history, currentUserName) {
-        // ATENÇÃO: A chave da API está exposta aqui para fins de demonstração.
+        // ATENÇÃO: A chave da API está exposta aqui para que o código funcione neste ambiente de teste.
+        // Em um site real (produção), use o método de back-end (Netlify Function) para proteger a chave.
         const apiKey = 'AIzaSyCDzeMtSUyKlwhYCWeDDGnRWQvfIW3VrQA';
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
